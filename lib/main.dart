@@ -1,11 +1,26 @@
+import 'dart:developer';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:libsql_dart/libsql_dart.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 // try Turso for free persistant sql storage: https://docs.turso.tech/sdk/flutter/quickstart
 // put this in GitHub
 // try it on my Android phone
 
+late LibsqlClient client;
 
-void main() {
+Future<void> main()  async {
+  await dotenv.load(fileName: ".env");
+  String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
+  String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
+  log(dbUrl);
+  log(dbToken);
+  client = LibsqlClient(dbUrl, authToken: dbToken);
+  await client.connect();
+  log(jsonEncode(await client.query("select * from rooms;")));
+
   runApp(const MyApp());
 }
 
@@ -33,7 +48,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreenAccent),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'My Flutter Demo Home Page'),
@@ -61,15 +76,21 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  String _myText = '';
 
-  void _incrementCounter() {
+  Future<void> _incrementCounter()  async {
+    String _newMyText = jsonEncode(await client.query("select name from rooms order by random() limit 1"));
+
     setState(() {
+
       // This call to setState tells the Flutter framework that something has
       // changed in this State, which causes it to rerun the build method below
       // so that the display can reflect the updated values. If we changed
       // _counter without calling setState(), then the build method would not be
       // called again, and so nothing would appear to happen.
       _counter++;
+      _myText = _newMyText;
+
     });
   }
 
@@ -110,8 +131,8 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            Text(
+              '$_myText\n\n You have pushed the button this many times:'
             ),
             Text(
               '$_counter',
