@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:basic_utils/basic_utils.dart';
+import 'package:searchable_listview/searchable_listview.dart';
 
 // try Turso for free persistant sql storage: https://docs.turso.tech/sdk/flutter/quickstart
 // put this in GitHub
@@ -11,16 +12,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 late LibsqlClient client;
 
-Future<void> main()  async {
-  await dotenv.load(fileName: ".env");
-  String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
-  String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
-  log(dbUrl);
-  log(dbToken);
-  client = LibsqlClient(dbUrl, authToken: dbToken);
-  await client.connect();
-  log(jsonEncode(await client.query("select * from rooms;")));
-
+void main()  {
   runApp(const MyApp());
 }
 
@@ -76,10 +68,20 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-  String _myText = '';
+  List _myResult = [];
 
   Future<void> _incrementCounter()  async {
-    String _newMyText = jsonEncode(await client.query("select name from rooms order by random() limit 1"));
+    // make the connection near the point it is used so it doesn't time out
+    await dotenv.load(fileName: ".env");
+    String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
+    String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
+    log(dbUrl);
+    log(dbToken);
+    client = LibsqlClient(dbUrl, authToken: dbToken);
+    await client.connect();
+    List result = await client.query("select name from rooms order by random();");
+    log(jsonEncode(result));
+    List _newResult = result;
 
     setState(() {
 
@@ -89,10 +91,11 @@ class _MyHomePageState extends State<MyHomePage> {
       // _counter without calling setState(), then the build method would not be
       // called again, and so nothing would appear to happen.
       _counter++;
-      _myText = _newMyText;
+      _myResult = _newResult;
 
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +105,13 @@ class _MyHomePageState extends State<MyHomePage> {
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
+    final List<String> entries = <String>['A', 'B', 'C'];
+    final List<int> colorCodes = <int>[600, 500, 100];
+    List<String> names = ['User 1', 'User 2', 'User 3', 'User 4'];
+    // String _stringResult = jsonEncode(_myResult);
+    log(jsonEncode(_myResult));
+    String _stringResult = 'Hi Heather';
+
     return Scaffold(
       appBar: AppBar(
         // TRY THIS: Try changing the color here to a specific color (to
@@ -132,11 +142,25 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              '$_myText\n\n You have pushed the button this many times:'
+              '$_stringResult\n\n You have pushed the button this many times:'
             ),
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            Expanded(
+              child:
+            ListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: _myResult.length,
+              itemBuilder: (BuildContext context, int index) {
+                return Container(
+                  height: 50,
+                  // color: Colors.amber[colorCodes[index]],
+                  child: Center(child: Text(StringUtils.capitalize('${_myResult[index]["name"]}'))),
+                );
+              },
+            )
             ),
           ],
         ),
