@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'dart:ffi';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+// import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:searchable_listview/searchable_listview.dart';
@@ -182,13 +182,13 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   ];
 
-  final CardSwiperController controller = CardSwiperController();
-  final cards = candidates.map(ExampleCard.new).toList();
-
-  @override
-  void dispose() {
-    controller.dispose();
-  }
+  // final CardSwiperController controller = CardSwiperController();
+  // final cards = candidates.map(ExampleCard.new).toList();
+  //
+  // @override
+  // void dispose() {
+  //   controller.dispose();
+  // }
 
   Future<void> _incrementCounter() async {
     // make the connection near the point it is used so it doesn't time out
@@ -266,22 +266,22 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
-            Expanded(
-                child: CardSwiper(
-                  controller: controller,
-                  cardsCount: cards.length,
-                  onSwipe: _onSwipe,
-                  onUndo: _onUndo,
-                  numberOfCardsDisplayed: 4,
-                  backCardOffset: const Offset(40, 40),
-                  padding: const EdgeInsets.all(24.0),
-                  cardBuilder: (context,
-                      index,
-                      horizontalThresholdPercentage,
-                      verticalThresholdPercentage,) =>
-                  cards[index],
-                )
-            ),
+            // Expanded(
+            //     child: CardSwiper(
+            //       controller: controller,
+            //       cardsCount: cards.length,
+            //       onSwipe: _onSwipe,
+            //       onUndo: _onUndo,
+            //       numberOfCardsDisplayed: 4,
+            //       backCardOffset: const Offset(40, 40),
+            //       padding: const EdgeInsets.all(24.0),
+            //       cardBuilder: (context,
+            //           index,
+            //           horizontalThresholdPercentage,
+            //           verticalThresholdPercentage,) =>
+            //       cards[index],
+            //     )
+            // ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(15),
@@ -499,24 +499,24 @@ class RoomTaskItem extends StatelessWidget {
   }
 }
 
-bool _onSwipe(
-  int previousIndex,
-  int? currentIndex,
-  CardSwiperDirection direction,
-) {
-  debugPrint(
-    'The card $previousIndex was swiped to the ${direction.name}. Now the card $currentIndex is on top',
-  );
-  return true;
-}
-
-bool _onUndo(
-  int? previousIndex,
-  int currentIndex,
-  CardSwiperDirection direction,
-) {
-  debugPrint(
-    'The card $currentIndex was undod from the ${direction.name}',
-  );
-  return true;
-}
+// bool _onSwipe(
+//   int previousIndex,
+//   int? currentIndex,
+//   CardSwiperDirection direction,
+// ) {
+//   debugPrint(
+//     'The card $previousIndex was swiped to the ${direction.name}. Now the card $currentIndex is on top',
+//   );
+//   return true;
+// }
+//
+// bool _onUndo(
+//   int? previousIndex,
+//   int currentIndex,
+//   CardSwiperDirection direction,
+// ) {
+//   debugPrint(
+//     'The card $currentIndex was undod from the ${direction.name}',
+//   );
+//   return true;
+// }
