@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 // import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:searchable_listview/searchable_listview.dart';
+import 'package:uuid/uuid.dart';
 
 class ExampleCandidateModel {
   final String name;
@@ -177,7 +178,7 @@ class _MyHomePageState extends State<MyHomePage> {
       'room_name': 'fake room',
       'task_id': 'jhg',
       'task_name': 'fake task',
-       'most_recent_cleaning': DateTime.now().toString(),
+      'most_recent_cleaning': DateTime.now().toString(),
       'period_days': 1
     }
   ];
@@ -308,7 +309,13 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
   List<RoomTask> roomDataAsRooms = [
     for (Map RoomMap in roomListofMapsData) RoomTask.fromMap(RoomMap)
   ];
-  roomDataAsRooms.sort((a, b) => a.score.compareTo(b.score));
+  roomDataAsRooms.sort((a, b) {
+    final scoreCompare = a.score.compareTo(b.score);
+    if (scoreCompare == 0) {
+      return 1 * a.task_name.compareTo(b.task_name);
+    }
+    return scoreCompare;
+  });
   // log("roomDataAsRooms");
   // log(jsonEncode(roomDataAsRooms));
 
@@ -376,8 +383,7 @@ class RoomTask {
       required this.room_name,
       required this.task_name,
       required this.most_recent_cleaning,
-        required period_days
-      });
+      required period_days});
 
   RoomTask.fromMap(Map myMap) {
     this.id = myMap["id"];
@@ -392,15 +398,58 @@ class RoomTask {
   double calculateScore() {
     final most_recent_cleaning_datetime = DateTime.parse(most_recent_cleaning);
     final now = DateTime.now();
-    final days_since_last_cleaning = now.difference(most_recent_cleaning_datetime).inDays;
+    final days_since_last_cleaning =
+        now.difference(most_recent_cleaning_datetime).inDays;
 
     final days_till_next_due = period_days - days_since_last_cleaning;
     double percent_overdue = 0.0;
     if (days_till_next_due < 0) {
       percent_overdue = days_till_next_due / period_days;
     }
-    return(percent_overdue);
+    return (percent_overdue);
   }
+}
+
+// A method that launches the SelectionScreen and awaits the result from
+// Navigator.pop.
+Future<void> _navigateAndDisplaySelection(
+    RoomTask room_task, BuildContext context) async {
+  // Navigator.push returns a Future that completes after calling
+  // Navigator.pop on the Selection Screen.
+  var result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailScreen(room_task: room_task),
+      ));
+
+  // When a BuildContext is used from a StatefulWidget, the mounted property
+  // must be checked after an asynchronous gap.
+  if (!context.mounted) return;
+
+  var uuid = Uuid();
+  var cleaning_id = uuid.v1().substring(1, 8);
+  var display_text = '';
+
+  if (result == 0) {
+    display_text = 'Cancelled';
+  } else {
+    display_text = 'Inserting';
+    await client.execute(
+        "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms)"
+        " VALUES (?,?,?,?)",
+        positional: [
+          cleaning_id,
+          room_task.id,
+          DateTime.now().toString(),
+          result
+        ]);
+  }
+
+  // After the Selection Screen returns a result, hide any previous snackbars
+  // and show the new result.
+  ScaffoldMessenger.of(context)
+    ..removeCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text('$display_text $cleaning_id')));
 }
 
 class RoomTaskItem extends StatelessWidget {
@@ -416,81 +465,89 @@ class RoomTaskItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
-      // child: GestureDetector(
-      //   onTap: () {
-      //     ScaffoldMessenger.of(context)
-      //         .showSnackBar(SnackBar(content: Text('Gesture Detected!')));
-      //   },
+      padding: const EdgeInsets.all(20.0),
       child: Container(
         height: 120,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Card(
-          child: Row(
-            children: [
-              const SizedBox(
-                width: 10,
-              ),
-              Icon(
-                Icons.star,
-                color: Colors.yellow[700],
-              ),
-              const SizedBox(
-                width: 10,
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // FloatingActionButton(
-                  //   onPressed: this.controller.undo,
-                  //   child: const Icon(Icons.rotate_left),
-                  // ),
-                  // FloatingActionButton(
-                  //   onPressed: () => this.controller.swipe(CardSwiperDirection.left),
-                  //   child: const Icon(Icons.keyboard_arrow_left),
-                  // ),
-                  // FloatingActionButton(
-                  //   onPressed: () =>
-                  //       this.controller.swipe(CardSwiperDirection.right),
-                  //   child: const Icon(Icons.keyboard_arrow_right),
-                  // ),
-                  // FloatingActionButton(
-                  //   onPressed: () => this.controller.swipe(CardSwiperDirection.top),
-                  //   child: const Icon(Icons.keyboard_arrow_up),
-                  // ),
-                  // FloatingActionButton(
-                  //   onPressed: () =>
-                  //       this.controller.swipe(CardSwiperDirection.bottom),
-                  //   child: const Icon(Icons.keyboard_arrow_down),
-                  // ),
-                  Text(
-                    'id: ${room_task.id}',
-                    style: const TextStyle(
-                      color: Colors.purple,
-                      fontWeight: FontWeight.bold,
+        child: GestureDetector(
+          onTap: () {
+            _navigateAndDisplaySelection(room_task, context);
+            // var snackBar = SnackBar(content: Text('Clicked ${room_task.full_name}'), showCloseIcon: true);
+            // ScaffoldMessenger.of(context).showSnackBar(snackBar);
+            // final result = await Navigator.push(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (context) => DetailScreen(room_task: room_task),
+            //   ),
+            // );
+          },
+          child: Card(
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 10,
+                ),
+                Icon(
+                  Icons.star,
+                  color: Colors.yellow[700],
+                ),
+                const SizedBox(
+                  width: 10,
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // FloatingActionButton(
+                    //   onPressed: this.controller.undo,
+                    //   child: const Icon(Icons.rotate_left),
+                    // ),
+                    // FloatingActionButton(
+                    //   onPressed: () => this.controller.swipe(CardSwiperDirection.left),
+                    //   child: const Icon(Icons.keyboard_arrow_left),
+                    // ),
+                    // FloatingActionButton(
+                    //   onPressed: () =>
+                    //       this.controller.swipe(CardSwiperDirection.right),
+                    //   child: const Icon(Icons.keyboard_arrow_right),
+                    // ),
+                    // FloatingActionButton(
+                    //   onPressed: () => this.controller.swipe(CardSwiperDirection.top),
+                    //   child: const Icon(Icons.keyboard_arrow_up),
+                    // ),
+                    // FloatingActionButton(
+                    //   onPressed: () =>
+                    //       this.controller.swipe(CardSwiperDirection.bottom),
+                    //   child: const Icon(Icons.keyboard_arrow_down),
+                    // ),
+                    Text(
+                      'id: ${room_task.id}',
+                      style: const TextStyle(
+                        color: Colors.purple,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'score: ${room_task.calculateScore()}',
-                    style: const TextStyle(
-                      color: Colors.purple,
-                      fontWeight: FontWeight.bold,
+                    Text(
+                      'score: ${room_task.calculateScore()}',
+                      style: const TextStyle(
+                        color: Colors.purple,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${room_task.full_name}',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
+                    Text(
+                      '${room_task.full_name}',
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -520,3 +577,147 @@ class RoomTaskItem extends StatelessWidget {
 //   );
 //   return true;
 // }
+
+class DetailScreen extends StatelessWidget {
+  // In the constructor, require a roomRask.
+  const DetailScreen({super.key, required this.room_task});
+
+  // Declare a field that holds the Todo.
+  final RoomTask room_task;
+
+  @override
+  Widget build(BuildContext context) {
+    // Use the task to create the UI.
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(room_task.full_name),
+      ),
+      body: Center(
+          child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(room_task.full_name),
+          SizedBox(
+            width: 200.0,
+            height: 300.0,
+            child: MyStopwatch(),
+          )
+        ],
+      )),
+    );
+  }
+}
+
+class MyStopwatch extends StatefulWidget {
+  const MyStopwatch({Key? key}) : super(key: key);
+
+  @override
+  State<MyStopwatch> createState() => _MyStopwatchState();
+}
+
+class _MyStopwatchState extends State<MyStopwatch> {
+  final Stopwatch _stopwatch = Stopwatch();
+  late Duration _elapsedTime;
+  late String _elapsedTimeString;
+  late Timer timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _elapsedTime = Duration.zero;
+    _elapsedTimeString = _formatElapsedTime(_elapsedTime);
+
+    // Create a timer that runs a callback every 100 milliseconds to update UI
+    timer = Timer.periodic(const Duration(milliseconds: 100), (Timer timer) {
+      setState(() {
+        // Update elapsed time only if the stopwatch is running
+        if (_stopwatch.isRunning) {
+          _updateElapsedTime();
+        }
+      });
+    });
+  }
+
+  // Start/Stop button callback
+  void _startStopwatch() {
+    if (!_stopwatch.isRunning) {
+      // Start the stopwatch and update elapsed time
+      _stopwatch.start();
+      _updateElapsedTime();
+    } else {
+      // Stop the stopwatch
+      _stopwatch.stop();
+      Navigator.pop(context, _elapsedTime.inMilliseconds);
+    }
+  }
+
+  // Reset button callback
+  void _resetStopwatch() {
+    // Reset the stopwatch to zero and update elapsed time
+    _stopwatch.reset();
+    _updateElapsedTime();
+  }
+
+  void _cancelStopwatch() {
+    Navigator.pop(context, 0);
+  }
+
+  // Update elapsed time and formatted time string
+  void _updateElapsedTime() {
+    setState(() {
+      _elapsedTime = _stopwatch.elapsed;
+      _elapsedTimeString = _formatElapsedTime(_elapsedTime);
+    });
+  }
+
+  // Format a Duration into a string (MM:SS.SS)
+  String _formatElapsedTime(Duration time) {
+    return '${time.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(time.inSeconds.remainder(60)).toString().padLeft(2, '0')}.${(time.inMilliseconds % 1000 ~/ 100).toString()}';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // Display elapsed time
+            Text(
+              _elapsedTimeString,
+              style: const TextStyle(fontSize: 40.0),
+            ),
+            const SizedBox(height: 20.0),
+            // Start/Stop and Reset buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: _startStopwatch,
+                  child: Text(_stopwatch.isRunning ? 'Stop' : 'Start'),
+                ),
+                const SizedBox(width: 20.0),
+                ElevatedButton(
+                  onPressed: _cancelStopwatch,
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
