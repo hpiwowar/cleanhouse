@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
@@ -175,7 +176,9 @@ class _MyHomePageState extends State<MyHomePage> {
       'room_id': 'uty',
       'room_name': 'fake room',
       'task_id': 'jhg',
-      'task_name': 'fake task'
+      'task_name': 'fake task',
+       'most_recent_cleaning': DateTime.now().toString(),
+      'period_days': 1
     }
   ];
 
@@ -197,9 +200,12 @@ class _MyHomePageState extends State<MyHomePage> {
     client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
     List _newRoomData = await client.query(
-        "select room_tasks.*, room_name, task_name from room_tasks, rooms, tasks "
-            "where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id "
-            "order by room_name, task_name;");
+        "select room_tasks.*, room_name, task_name, COALESCE(max(end_datetime), DateTime('now', 'localtime', '-6 month')) as most_recent_cleaning, string_agg(equipment_name, ';')"
+        " from room_tasks, rooms, tasks, task_equipment, equipment"
+        " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
+        " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
+        " group by room_tasks.id"
+        " order by room_name, task_name;");
     log(jsonEncode(_newRoomData));
 
     setState(() {
@@ -302,6 +308,7 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
   List<RoomTask> roomDataAsRooms = [
     for (Map RoomMap in roomListofMapsData) RoomTask.fromMap(RoomMap)
   ];
+  roomDataAsRooms.sort((a, b) => a.score.compareTo(b.score));
   // log("roomDataAsRooms");
   // log(jsonEncode(roomDataAsRooms));
 
@@ -357,14 +364,20 @@ class RoomTask {
   String room_name = 'Temp Room';
   String task_id = 'sdf';
   String task_name = 'Temp Task';
+  String most_recent_cleaning = DateTime.now().toString();
+  int period_days = 1;
   late String full_name = "$room_name $task_name";
+  late double score = calculateScore();
 
   RoomTask(
       {required this.id,
       required this.room_id,
       required this.task_id,
       required this.room_name,
-      required this.task_name});
+      required this.task_name,
+      required this.most_recent_cleaning,
+        required period_days
+      });
 
   RoomTask.fromMap(Map myMap) {
     this.id = myMap["id"];
@@ -372,6 +385,21 @@ class RoomTask {
     this.task_id = myMap["task_id"];
     this.room_name = myMap["room_name"];
     this.task_name = myMap["task_name"];
+    this.most_recent_cleaning = myMap["most_recent_cleaning"];
+    this.period_days = myMap["period_days"];
+  }
+
+  double calculateScore() {
+    final most_recent_cleaning_datetime = DateTime.parse(most_recent_cleaning);
+    final now = DateTime.now();
+    final days_since_last_cleaning = now.difference(most_recent_cleaning_datetime).inDays;
+
+    final days_till_next_due = period_days - days_since_last_cleaning;
+    double percent_overdue = 0.0;
+    if (days_till_next_due < 0) {
+      percent_overdue = days_till_next_due / period_days;
+    }
+    return(percent_overdue);
   }
 }
 
@@ -395,7 +423,7 @@ class RoomTaskItem extends StatelessWidget {
       //         .showSnackBar(SnackBar(content: Text('Gesture Detected!')));
       //   },
       child: Container(
-        height: 60,
+        height: 120,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(10),
@@ -441,6 +469,13 @@ class RoomTaskItem extends StatelessWidget {
                   // ),
                   Text(
                     'id: ${room_task.id}',
+                    style: const TextStyle(
+                      color: Colors.purple,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'score: ${room_task.calculateScore()}',
                     style: const TextStyle(
                       color: Colors.purple,
                       fontWeight: FontWeight.bold,
