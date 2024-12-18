@@ -200,14 +200,14 @@ class _MyHomePageState extends State<MyHomePage> {
     log(dbToken);
     client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
-    List _newRoomData = await client.query(
+    List newRoomData = await client.query(
         "select room_tasks.*, room_name, task_name, COALESCE(max(end_datetime), DateTime('now', 'localtime', '-6 month')) as most_recent_cleaning, string_agg(equipment_name, ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
         " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
         " group by room_tasks.id"
         " order by room_name, task_name;");
-    log(jsonEncode(_newRoomData));
+    log(jsonEncode(newRoomData));
 
     setState(() {
       // This call to setState tells the Flutter framework that something has
@@ -216,7 +216,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // _counter without calling setState(), then the build method would not be
       // called again, and so nothing would appear to happen.
       _counter++;
-      _myRoomData = _newRoomData;
+      _myRoomData = newRoomData;
     });
   }
 
@@ -230,7 +230,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // than having to individually change instances of widgets.
 
     // log(jsonEncode(_myRoomData));
-    String _stringResult = 'Hi Heather';
+    String stringResult = 'Hi Heather';
 
     return Scaffold(
       appBar: AppBar(
@@ -262,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-                '$_stringResult\n\n You have pushed the button this many times:'),
+                '$stringResult\n\n You have pushed the button this many times:'),
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
@@ -311,7 +311,19 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
   ];
   roomDataAsRooms.sort((a, b) {
     final scoreCompare = a.score.compareTo(b.score);
+
+    // if a tie on score
     if (scoreCompare == 0) {
+      // order based on amount of equipment it needs that I wouldn't have out yet
+      // to do this:
+
+      // find the equipment for ones with lower scores
+      // remove that equipment from the a and b lists
+      // if number of remaining equipment is the same
+        // return taskname sort
+      // else return compare the number of remaining equipments in a and b lists
+
+      // backup, sort on task name
       return 1 * a.task_name.compareTo(b.task_name);
     }
     return scoreCompare;
@@ -348,7 +360,7 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
 }
 
 class EmptyView extends StatelessWidget {
-  const EmptyView({Key? key}) : super(key: key);
+  const EmptyView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -386,40 +398,40 @@ class RoomTask {
       required period_days});
 
   RoomTask.fromMap(Map myMap) {
-    this.id = myMap["id"];
-    this.room_id = myMap["room_name"];
-    this.task_id = myMap["task_id"];
-    this.room_name = myMap["room_name"];
-    this.task_name = myMap["task_name"];
-    this.most_recent_cleaning = myMap["most_recent_cleaning"];
-    this.period_days = myMap["period_days"];
+    id = myMap["id"];
+    room_id = myMap["room_name"];
+    task_id = myMap["task_id"];
+    room_name = myMap["room_name"];
+    task_name = myMap["task_name"];
+    most_recent_cleaning = myMap["most_recent_cleaning"];
+    period_days = myMap["period_days"];
   }
 
   double calculateScore() {
-    final most_recent_cleaning_datetime = DateTime.parse(most_recent_cleaning);
+    final mostRecentCleaningDatetime = DateTime.parse(most_recent_cleaning);
     final now = DateTime.now();
-    final days_since_last_cleaning =
-        now.difference(most_recent_cleaning_datetime).inDays;
+    final daysSinceLastCleaning =
+        now.difference(mostRecentCleaningDatetime).inDays;
 
-    final days_till_next_due = period_days - days_since_last_cleaning;
-    double percent_overdue = 0.0;
-    if (days_till_next_due < 0) {
-      percent_overdue = days_till_next_due / period_days;
+    final daysTillNextDue = period_days - daysSinceLastCleaning;
+    double percentOverdue = 0.0;
+    if (daysTillNextDue < 0) {
+      percentOverdue = daysTillNextDue / period_days;
     }
-    return (percent_overdue);
+    return (percentOverdue);
   }
 }
 
 // A method that launches the SelectionScreen and awaits the result from
 // Navigator.pop.
 Future<void> _navigateAndDisplaySelection(
-    RoomTask room_task, BuildContext context) async {
+    RoomTask roomTask, BuildContext context) async {
   // Navigator.push returns a Future that completes after calling
   // Navigator.pop on the Selection Screen.
   var result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DetailScreen(room_task: room_task),
+        builder: (context) => DetailScreen(room_task: roomTask),
       ));
 
   // When a BuildContext is used from a StatefulWidget, the mounted property
@@ -427,19 +439,19 @@ Future<void> _navigateAndDisplaySelection(
   if (!context.mounted) return;
 
   var uuid = Uuid();
-  var cleaning_id = uuid.v1().substring(1, 8);
-  var display_text = '';
+  var cleaningId = uuid.v1().substring(1, 8);
+  var displayText = '';
 
   if (result == 0) {
-    display_text = 'Cancelled';
+    displayText = 'Cancelled';
   } else {
-    display_text = 'Inserting';
+    displayText = 'Inserting';
     await client.execute(
         "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms)"
         " VALUES (?,?,?,?)",
         positional: [
-          cleaning_id,
-          room_task.id,
+          cleaningId,
+          roomTask.id,
           DateTime.now().toString(),
           result
         ]);
@@ -449,7 +461,7 @@ Future<void> _navigateAndDisplaySelection(
   // and show the new result.
   ScaffoldMessenger.of(context)
     ..removeCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$display_text $cleaning_id')));
+    ..showSnackBar(SnackBar(content: Text('$displayText $cleaningId')));
 }
 
 class RoomTaskItem extends StatelessWidget {
@@ -457,10 +469,9 @@ class RoomTaskItem extends StatelessWidget {
 
   // final CardSwiperController controller;
   //
-  const RoomTaskItem({Key? key, required this.room_task
+  const RoomTaskItem({super.key, required this.room_task
       // ,required CardSwiperController this.controller
-      })
-      : super(key: key);
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +549,7 @@ class RoomTaskItem extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${room_task.full_name}',
+                      room_task.full_name,
                       style: const TextStyle(
                         color: Colors.blue,
                         fontWeight: FontWeight.bold,
@@ -609,7 +620,7 @@ class DetailScreen extends StatelessWidget {
 }
 
 class MyStopwatch extends StatefulWidget {
-  const MyStopwatch({Key? key}) : super(key: key);
+  const MyStopwatch({super.key});
 
   @override
   State<MyStopwatch> createState() => _MyStopwatchState();
