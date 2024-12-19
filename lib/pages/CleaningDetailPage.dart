@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:cleanhouse/components/RoomTask.dart';
 
-class DetailScreen extends StatelessWidget {
+class CleaningDetailPage extends StatelessWidget {
   // In the constructor, require a roomRask.
-  const DetailScreen({super.key, required this.room_task});
+  const CleaningDetailPage({super.key, required this.room_task});
 
   // Declare a field that holds the Todo.
   final RoomTask room_task;

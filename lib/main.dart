@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cleanhouse/pages/cleaning_list.dart';
+import 'package:cleanhouse/pages/CleaningListPage.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const CleaningApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CleaningApp extends StatelessWidget {
+  const CleaningApp({super.key});
 
   // This widget is the root of your application.
   @override
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
         ),
       ),
-      home: const MyHomePage(title: 'cleaning cleaning'),
+      home: const CleaningListPage(title: 'cleaning cleaning'),
     );
   }
 }

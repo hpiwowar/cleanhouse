@@ -7,20 +7,20 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:searchable_listview/searchable_listview.dart';
 import 'package:cleanhouse/components/RoomTask.dart';
-import 'package:cleanhouse/pages/cleaning_details.dart';
+import 'package:cleanhouse/pages/CleaningDetailPage.dart';
 
 List _myRoomData = [];
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class CleaningListPage extends StatefulWidget {
+  const CleaningListPage({super.key, required this.title});
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<CleaningListPage> createState() => _CleaningListPageState();
 }
 
 
-class _MyHomePageState extends State<MyHomePage> {
+class _CleaningListPageState extends State<CleaningListPage> {
   @override
   void initState() {
     super.initState();
@@ -232,7 +232,7 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
   var result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DetailScreen(room_task: roomTask),
+        builder: (context) => CleaningDetailPage(room_task: roomTask),
       ));
 
   // When a BuildContext is used from a StatefulWidget, the mounted property
