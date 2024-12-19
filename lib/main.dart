@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-// import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:searchable_listview/searchable_listview.dart';
@@ -48,6 +47,18 @@ final List<ExampleCandidateModel> candidates = [
     city: 'Tokyo',
     color: const [Color(0xFF0BA4E0), Color(0xFFA9E4BD)],
   ),
+];
+
+List _myRoomData = [
+  {
+    "id": '123',
+    'room_id': 'uty',
+    'room_name': 'fake room',
+    'task_id': 'jhg',
+    'task_name': 'fake task',
+    'most_recent_cleaning': DateTime.now().toString(),
+    'period_days': 1
+  }
 ];
 
 class ExampleCard extends StatelessWidget {
@@ -141,12 +152,22 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My Flutter Demo',
+      title: 'Clean clean clean',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.yellow),
-        useMaterial3: true,
+        brightness: Brightness.light,
+        primaryColor: Colors.green,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.green,
+          secondary: Colors.deepOrangeAccent,
+        ),
+        fontFamily: 'Varela',
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(fontSize: 36.0, fontStyle: FontStyle.italic),
+          bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
+        ),
       ),
-      home: const MyHomePage(title: 'My Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Cleaning tasks'),
     );
   }
 }
@@ -170,34 +191,18 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-  List _myRoomData = [
-    {
-      "id": '123',
-      'room_id': 'uty',
-      'room_name': 'fake room',
-      'task_id': 'jhg',
-      'task_name': 'fake task',
-      'most_recent_cleaning': DateTime.now().toString(),
-      'period_days': 1
-    }
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _reloadData();
+  }
 
-  // final CardSwiperController controller = CardSwiperController();
-  // final cards = candidates.map(ExampleCard.new).toList();
-  //
-  // @override
-  // void dispose() {
-  //   controller.dispose();
-  // }
 
-  Future<void> _incrementCounter() async {
+  void _reloadData() async {
     // make the connection near the point it is used so it doesn't time out
     await dotenv.load(fileName: ".env");
     String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
     String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
-    log(dbUrl);
-    log(dbToken);
     client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
     List newRoomData = await client.query(
@@ -208,27 +213,14 @@ class _MyHomePageState extends State<MyHomePage> {
         " group by room_tasks.id"
         " order by room_name, task_name;");
     log(jsonEncode(newRoomData));
-
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
       _myRoomData = newRoomData;
     });
+    return;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-
     // log(jsonEncode(_myRoomData));
     String stringResult = 'Hi Heather';
 
@@ -261,49 +253,21 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-                '$stringResult\n\n You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            // Expanded(
-            //     child: CardSwiper(
-            //       controller: controller,
-            //       cardsCount: cards.length,
-            //       onSwipe: _onSwipe,
-            //       onUndo: _onUndo,
-            //       numberOfCardsDisplayed: 4,
-            //       backCardOffset: const Offset(40, 40),
-            //       padding: const EdgeInsets.all(24.0),
-            //       cardBuilder: (context,
-            //           index,
-            //           horizontalThresholdPercentage,
-            //           verticalThresholdPercentage,) =>
-            //       cards[index],
-            //     )
-            // ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(15),
-                // child: simpleSearchWithSort(_myRoomData, controller),
-                child: simpleSearchWithSort(_myRoomData),
+                child: simpleSearchWithSort(_myRoomData, _reloadData),
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
 
-// Widget simpleSearchWithSort(List roomListofMapsData, CardSwiperController controller) {
-Widget simpleSearchWithSort(List roomListofMapsData) {
+Widget simpleSearchWithSort(
+    List roomListofMapsData, VoidCallback setStateFunction) {
   log("roomListofMapsData");
   log(jsonEncode(roomListofMapsData));
   List<RoomTask> roomDataAsRooms = [
@@ -320,7 +284,7 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
       // find the equipment for ones with lower scores
       // remove that equipment from the a and b lists
       // if number of remaining equipment is the same
-        // return taskname sort
+      // return taskname sort
       // else return compare the number of remaining equipments in a and b lists
 
       // backup, sort on task name
@@ -342,7 +306,7 @@ Widget simpleSearchWithSort(List roomListofMapsData) {
     },
     itemBuilder: (item) {
       // return RoomTaskItem(room_task: item, controller: controller);
-      return RoomTaskItem(room_task: item);
+      return RoomTaskItem(room_task: item, setStateFunction: setStateFunction);
     },
     initialList: roomDataAsRooms,
     inputDecoration: InputDecoration(
@@ -424,8 +388,8 @@ class RoomTask {
 
 // A method that launches the SelectionScreen and awaits the result from
 // Navigator.pop.
-Future<void> _navigateAndDisplaySelection(
-    RoomTask roomTask, BuildContext context) async {
+Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
+    VoidCallback setStateFunction, BuildContext context) async {
   // Navigator.push returns a Future that completes after calling
   // Navigator.pop on the Selection Screen.
   var result = await Navigator.push(
@@ -442,10 +406,13 @@ Future<void> _navigateAndDisplaySelection(
   var cleaningId = uuid.v1().substring(1, 8);
   var displayText = '';
 
-  if (result == 0) {
-    displayText = 'Cancelled';
-  } else {
+  if (result != 0) {
     displayText = 'Inserting';
+    await dotenv.load(fileName: ".env");
+    String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
+    String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
+    client = LibsqlClient(dbUrl, authToken: dbToken);
+    await client.connect();
     await client.execute(
         "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms)"
         " VALUES (?,?,?,?)",
@@ -457,137 +424,59 @@ Future<void> _navigateAndDisplaySelection(
         ]);
   }
 
-  // After the Selection Screen returns a result, hide any previous snackbars
-  // and show the new result.
-  ScaffoldMessenger.of(context)
-    ..removeCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$displayText $cleaningId')));
+  setStateFunction();
+
 }
 
 class RoomTaskItem extends StatelessWidget {
   final RoomTask room_task;
+  VoidCallback setStateFunction;
 
-  // final CardSwiperController controller;
-  //
-  const RoomTaskItem({super.key, required this.room_task
-      // ,required CardSwiperController this.controller
-      });
+  RoomTaskItem(
+      {super.key, required this.room_task, required this.setStateFunction});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Container(
-        height: 120,
+        height: 60,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(10),
         ),
         child: GestureDetector(
-          onTap: () {
-            _navigateAndDisplaySelection(room_task, context);
-            // var snackBar = SnackBar(content: Text('Clicked ${room_task.full_name}'), showCloseIcon: true);
-            // ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            // final result = await Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (context) => DetailScreen(room_task: room_task),
-            //   ),
-            // );
+          onTap: () async {
+            await _navigateAndDisplaySelection(room_task, setStateFunction, context);
           },
-          child: Card(
-            child: Row(
+          child: Card( child:
+             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                const SizedBox(
-                  width: 10,
+                Expanded( child:
+                Text(
+                  room_task.full_name,
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                Icon(
-                  Icons.star,
-                  color: Colors.yellow[700],
                 ),
-                const SizedBox(
-                  width: 10,
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // FloatingActionButton(
-                    //   onPressed: this.controller.undo,
-                    //   child: const Icon(Icons.rotate_left),
-                    // ),
-                    // FloatingActionButton(
-                    //   onPressed: () => this.controller.swipe(CardSwiperDirection.left),
-                    //   child: const Icon(Icons.keyboard_arrow_left),
-                    // ),
-                    // FloatingActionButton(
-                    //   onPressed: () =>
-                    //       this.controller.swipe(CardSwiperDirection.right),
-                    //   child: const Icon(Icons.keyboard_arrow_right),
-                    // ),
-                    // FloatingActionButton(
-                    //   onPressed: () => this.controller.swipe(CardSwiperDirection.top),
-                    //   child: const Icon(Icons.keyboard_arrow_up),
-                    // ),
-                    // FloatingActionButton(
-                    //   onPressed: () =>
-                    //       this.controller.swipe(CardSwiperDirection.bottom),
-                    //   child: const Icon(Icons.keyboard_arrow_down),
-                    // ),
-                    Text(
-                      'id: ${room_task.id}',
-                      style: const TextStyle(
-                        color: Colors.purple,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'score: ${room_task.calculateScore()}',
-                      style: const TextStyle(
-                        color: Colors.purple,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      room_task.full_name,
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Text(
+                  '${room_task.calculateScore().toStringAsFixed(1)}',
+                  style: const TextStyle(
+                    color: Colors.purple,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
-            ),
+        ),
           ),
         ),
       ),
-      // ),
     );
   }
 }
-
-// bool _onSwipe(
-//   int previousIndex,
-//   int? currentIndex,
-//   CardSwiperDirection direction,
-// ) {
-//   debugPrint(
-//     'The card $previousIndex was swiped to the ${direction.name}. Now the card $currentIndex is on top',
-//   );
-//   return true;
-// }
-//
-// bool _onUndo(
-//   int? previousIndex,
-//   int currentIndex,
-//   CardSwiperDirection direction,
-// ) {
-//   debugPrint(
-//     'The card $currentIndex was undod from the ${direction.name}',
-//   );
-//   return true;
-// }
 
 class DetailScreen extends StatelessWidget {
   // In the constructor, require a roomRask.
