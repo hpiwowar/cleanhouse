@@ -1,5 +1,3 @@
-
-
 class RoomTask {
   String id = 'abc';
   String room_id = '234';
@@ -13,12 +11,12 @@ class RoomTask {
 
   RoomTask(
       {required this.id,
-        required this.room_id,
-        required this.task_id,
-        required this.room_name,
-        required this.task_name,
-        required this.most_recent_cleaning,
-        required period_days});
+      required this.room_id,
+      required this.task_id,
+      required this.room_name,
+      required this.task_name,
+      required this.most_recent_cleaning,
+      required period_days});
 
   RoomTask.fromMap(Map myMap) {
     id = myMap["id"];

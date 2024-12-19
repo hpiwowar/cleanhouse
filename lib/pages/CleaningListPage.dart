@@ -19,14 +19,12 @@ class CleaningListPage extends StatefulWidget {
   State<CleaningListPage> createState() => _CleaningListPageState();
 }
 
-
 class _CleaningListPageState extends State<CleaningListPage> {
   @override
   void initState() {
     super.initState();
     _reloadData();
   }
-
 
   void _reloadData() async {
     // make the connection near the point it is used so it doesn't time out
@@ -37,11 +35,11 @@ class _CleaningListPageState extends State<CleaningListPage> {
     await client.connect();
     List newRoomData = await client.query(
         "select room_tasks.*, room_name, task_name, COALESCE(max(end_datetime), DateTime('now', 'localtime', '-6 month')) as most_recent_cleaning, string_agg(equipment_name, ';')"
-            " from room_tasks, rooms, tasks, task_equipment, equipment"
-            " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
-            " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
-            " group by room_tasks.id"
-            " order by room_name, task_name;");
+        " from room_tasks, rooms, tasks, task_equipment, equipment"
+        " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
+        " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
+        " group by room_tasks.id"
+        " order by room_name, task_name;");
     log(jsonEncode(newRoomData));
     setState(() {
       _myRoomData = newRoomData;
@@ -51,9 +49,6 @@ class _CleaningListPageState extends State<CleaningListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // log(jsonEncode(_myRoomData));
-    String stringResult = 'Hi Heather';
-
     return Scaffold(
       appBar: AppBar(
         // TRY THIS: Try changing the color here to a specific color (to
@@ -171,8 +166,6 @@ class EmptyView extends StatelessWidget {
   }
 }
 
-
-
 class RoomTaskItem extends StatelessWidget {
   final RoomTask room_task;
   VoidCallback setStateFunction;
@@ -192,30 +185,31 @@ class RoomTaskItem extends StatelessWidget {
         ),
         child: GestureDetector(
           onTap: () async {
-            await _navigateAndDisplaySelection(room_task, setStateFunction, context);
+            await _navigateAndDisplaySelection(
+                room_task, setStateFunction, context);
           },
-          child: Card( child:
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded( child:
-              Text(
-                room_task.full_name,
-                style: const TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
+          child: Card(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: Text(
+                    room_task.full_name,
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-              ),
-              Text(
-                '${room_task.calculateScore().toStringAsFixed(1)}',
-                style: const TextStyle(
-                  color: Colors.purple,
-                  fontWeight: FontWeight.bold,
+                Text(
+                  '${room_task.calculateScore().toStringAsFixed(1)}',
+                  style: const TextStyle(
+                    color: Colors.purple,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           ),
         ),
       ),
@@ -234,6 +228,10 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
       MaterialPageRoute(
         builder: (context) => CleaningDetailPage(room_task: roomTask),
       ));
+  final bool is_real = result['is_real'];
+  final int duration_ms = result['duration_ms'];
+  print("HI HEATHER");
+  print(is_real);
 
   // When a BuildContext is used from a StatefulWidget, the mounted property
   // must be checked after an asynchronous gap.
@@ -241,26 +239,24 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
 
   var uuid = Uuid();
   var cleaningId = uuid.v1().substring(1, 8);
-  var displayText = '';
 
   if (result != 0) {
-    displayText = 'Inserting';
     await dotenv.load(fileName: ".env");
     String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
     String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
     late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
     await client.execute(
-        "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms)"
-            " VALUES (?,?,?,?)",
+        "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+        " VALUES (?,?,?,?,?)",
         positional: [
           cleaningId,
           roomTask.id,
           DateTime.now().toString(),
-          result
+          duration_ms,
+          is_real ? 1 : 0
         ]);
   }
 
   setStateFunction();
-
 }

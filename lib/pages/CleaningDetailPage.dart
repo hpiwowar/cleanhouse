@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:cleanhouse/components/RoomTask.dart';
 
-class CleaningDetailPage extends StatelessWidget {
+class CleaningDetailPage extends StatefulWidget {
   // In the constructor, require a roomRask.
   const CleaningDetailPage({super.key, required this.room_task});
 
@@ -12,31 +12,54 @@ class CleaningDetailPage extends StatelessWidget {
   final RoomTask room_task;
 
   @override
+  State<CleaningDetailPage> createState() => _CleaningDetailPageState();
+}
+
+class _CleaningDetailPageState extends State<CleaningDetailPage> {
+  bool? isRealTask = false;
+
+  @override
   Widget build(BuildContext context) {
     // Use the task to create the UI.
     return Scaffold(
       appBar: AppBar(
-        title: Text(room_task.full_name),
+        title: Text(widget.room_task.full_name),
       ),
       body: Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(room_task.full_name),
-              SizedBox(
-                width: 200.0,
-                height: 300.0,
-                child: MyStopwatch(),
-              )
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(widget.room_task.full_name),
+          SizedBox(width: 200.0, height: 100.0),
+          Row(
+            children: [
+              Text("Is this a real task?"),
+              Checkbox(
+                  value: isRealTask,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      isRealTask = value;
+                    });
+                  }),
             ],
-          )),
+          ),
+          SizedBox(
+            width: 200.0,
+            height: 300.0,
+            child: MyStopwatch(isRealTask),
+          )
+        ],
+      )),
     );
   }
 }
 
-
 class MyStopwatch extends StatefulWidget {
-  const MyStopwatch({super.key});
+  late bool? _is_real_task_set;
+
+  MyStopwatch(bool? is_real_task_set) {
+    this._is_real_task_set = is_real_task_set;
+  }
 
   @override
   State<MyStopwatch> createState() => _MyStopwatchState();
@@ -54,7 +77,8 @@ class _MyStopwatchState extends State<MyStopwatch> {
     super.initState();
 
 // initialize confettiController
-    _confettiController = ConfettiController(duration: const Duration(seconds: 4));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 4));
 
     _elapsedTime = Duration.zero;
     _elapsedTimeString = _formatElapsedTime(_elapsedTime);
@@ -71,7 +95,7 @@ class _MyStopwatchState extends State<MyStopwatch> {
   }
 
   // Start/Stop button callback
-  Future<void> _startStopwatch () async {
+  Future<void> _startStopwatch() async {
     if (!_stopwatch.isRunning) {
       // Start the stopwatch and update elapsed time
       _stopwatch.start();
@@ -81,8 +105,11 @@ class _MyStopwatchState extends State<MyStopwatch> {
       _stopwatch.stop();
       _confettiController.play();
       await Future.delayed(const Duration(seconds: 5));
-      print("HI HEATHER WAITING HERE");
-      Navigator.pop(context, _elapsedTime.inMilliseconds);
+      final Map response = {
+        'duration_ms': _elapsedTime.inMilliseconds,
+        'is_real': widget._is_real_task_set
+      };
+      Navigator.pop(context, response);
     }
   }
 
@@ -154,12 +181,11 @@ class _MyStopwatchState extends State<MyStopwatch> {
                 ElevatedButton(
                   onPressed: _startStopwatch,
                   style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all<Color>(_stopwatch.isRunning ? Colors.red : Colors.green)
-                  ),
-                  child: _stopwatch.isRunning ?
-                  Icon(Icons.stop) :
-                  Icon(Icons.play_arrow)
-                  ,
+                      backgroundColor: MaterialStateProperty.all<Color>(
+                          _stopwatch.isRunning ? Colors.red : Colors.green)),
+                  child: _stopwatch.isRunning
+                      ? Icon(Icons.stop)
+                      : Icon(Icons.play_arrow),
                 ),
                 const SizedBox(width: 20.0),
                 ElevatedButton(
@@ -174,4 +200,3 @@ class _MyStopwatchState extends State<MyStopwatch> {
     );
   }
 }
-

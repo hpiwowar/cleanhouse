@@ -23,7 +23,7 @@ class CleaningApp extends StatelessWidget {
         fontFamily: 'Varela',
         textTheme: const TextTheme(
           displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
-          titleLarge: TextStyle(fontSize: 36.0, fontStyle: FontStyle.italic),
+          titleLarge: TextStyle(fontSize: 36.0),
           bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
         ),
       ),
@@ -31,7 +31,3 @@ class CleaningApp extends StatelessWidget {
     );
   }
 }
-
-
-
-
