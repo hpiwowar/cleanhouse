@@ -45,7 +45,8 @@ class _CleaningListPageState extends State<CleaningListPage> {
         " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
         " group by room_tasks.id"
         " order by room_name, task_name;");
-    log(jsonEncode(newRoomData));
+    // log("Here is the data we got from the database:");
+    // log(jsonEncode(newRoomData));
     setState(() {
       _myRoomData = newRoomData;
     });
