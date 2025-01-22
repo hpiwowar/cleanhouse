@@ -12,22 +12,23 @@ class CleaningApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Clean clean clean',
       theme: ThemeData(
         brightness: Brightness.light,
-        primaryColor: Colors.green,
+        primaryColor: Colors.pink.shade300,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          secondary: Colors.deepOrangeAccent,
+          seedColor: Colors.grey.shade200,
+          secondary: Colors.deepOrange,
         ),
         fontFamily: 'Varela',
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
-          titleLarge: TextStyle(fontSize: 36.0),
-          bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
-        ),
+        // textTheme: const TextTheme(
+        //   displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
+        //   titleLarge: TextStyle(fontSize: 36.0),
+        //   bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
+        // ),
       ),
-      home: const CleaningListPage(title: 'cleaning cleaning'),
+      home: const CleaningListPage(title: 'Time to Clean!'),
     );
   }
 }

@@ -34,7 +34,12 @@ class _CleaningListPageState extends State<CleaningListPage> {
     late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
     List newRoomData = await client.query(
-        "select room_tasks.*, room_name, task_name, COALESCE(max(end_datetime), DateTime('now', 'localtime', '-6 month')) as most_recent_cleaning, string_agg(equipment_name, ';')"
+        "select room_tasks.*, "
+            " room_name, "
+            " task_name, "
+            " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-10 days')) as most_recent_cleaning, "
+            " string_agg(equipment_name, "
+            " ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
         " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
@@ -51,36 +56,18 @@ class _CleaningListPageState extends State<CleaningListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
+        elevation: 0,
+        foregroundColor: Theme.of(context).colorScheme.primary,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(15),
+                padding: const EdgeInsets.all(20),
                 child: simpleSearchWithSort(_myRoomData, _reloadData),
               ),
             ),
@@ -93,8 +80,8 @@ class _CleaningListPageState extends State<CleaningListPage> {
 
 Widget simpleSearchWithSort(
     List roomListofMapsData, VoidCallback setStateFunction) {
-  log("roomListofMapsData");
-  log(jsonEncode(roomListofMapsData));
+  // log("roomListofMapsData");
+  // log(jsonEncode(roomListofMapsData));
   List<RoomTask> roomDataAsRooms = [
     for (Map RoomMap in roomListofMapsData) RoomTask.fromMap(RoomMap)
   ];
@@ -117,8 +104,6 @@ Widget simpleSearchWithSort(
     }
     return scoreCompare;
   });
-  // log("roomDataAsRooms");
-  // log(jsonEncode(roomDataAsRooms));
 
   return SearchableList<RoomTask>(
     lazyLoadingEnabled: false,
@@ -130,19 +115,18 @@ Widget simpleSearchWithSort(
           .toList();
     },
     itemBuilder: (item) {
-      // return RoomTaskItem(room_task: item, controller: controller);
       return RoomTaskItem(room_task: item, setStateFunction: setStateFunction);
     },
     initialList: roomDataAsRooms,
     inputDecoration: InputDecoration(
-      labelText: "Search Task",
+      labelText: "Filter tasks",
       fillColor: Colors.white,
       focusedBorder: OutlineInputBorder(
         borderSide: const BorderSide(
           color: Colors.blue,
           width: 1.0,
         ),
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(5.0),
       ),
     ),
   );
@@ -176,39 +160,59 @@ class RoomTaskItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(5.0),
       child: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
-        ),
+        height: 70,
         child: GestureDetector(
           onTap: () async {
             await _navigateAndDisplaySelection(
                 room_task, setStateFunction, context);
           },
           child: Card(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: Text(
-                    room_task.full_name,
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${room_task.calculateScore().toStringAsFixed(1)}',
-                  style: const TextStyle(
-                    color: Colors.purple,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(5.0),
+              child: Row(
+                // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(room_task.isDeep
+                            ? Icons.workspace_premium_outlined
+                            : Icons.bolt),
+                        const SizedBox(width: 50),
+                      ]),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            room_task.display_task_name,
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 20),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            room_task.display_room_name,
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 15),
+                          ),
+                        ),
+                      ]),
+                  Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(width: 80),
+                        Text(
+                          '${room_task.calculateScore().toStringAsFixed(1)}',
+                          style: const TextStyle(
+                            color: Colors.deepOrangeAccent,
+                          ),
+                        )
+                      ])
+                ],
+              ),
             ),
           ),
         ),
@@ -228,35 +232,35 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
       MaterialPageRoute(
         builder: (context) => CleaningDetailPage(room_task: roomTask),
       ));
-  final bool is_real = result['is_real'];
-  final int duration_ms = result['duration_ms'];
-  print("HI HEATHER");
-  print(is_real);
+  if (result != null) {
+    final bool is_real = result['is_real'];
+    final int duration_ms = result['duration_ms'];
 
-  // When a BuildContext is used from a StatefulWidget, the mounted property
-  // must be checked after an asynchronous gap.
-  if (!context.mounted) return;
+    // When a BuildContext is used from a StatefulWidget, the mounted property
+    // must be checked after an asynchronous gap.
+    if (!context.mounted) return;
 
-  var uuid = Uuid();
-  var cleaningId = uuid.v1().substring(1, 8);
+    var uuid = Uuid();
+    var cleaningId = uuid.v1().substring(1, 8);
 
-  if (result != 0) {
-    await dotenv.load(fileName: ".env");
-    String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
-    String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
-    late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
-    await client.connect();
-    await client.execute(
-        "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
-        " VALUES (?,?,?,?,?)",
-        positional: [
-          cleaningId,
-          roomTask.id,
-          DateTime.now().toString(),
-          duration_ms,
-          is_real ? 1 : 0
-        ]);
+    if (result != 0) {
+      await dotenv.load(fileName: ".env");
+      String dbUrl = dotenv.env['TURSO_DATABASE_URL'] ?? '';
+      String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
+      late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
+      await client.connect();
+      await client.execute(
+          "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+          " VALUES (?,?,?,?,?)",
+          positional: [
+            cleaningId,
+            roomTask.id,
+            DateTime.now().toString(),
+            duration_ms,
+            is_real ? 1 : 0
+          ]);
+    }
+
+    setStateFunction();
   }
-
-  setStateFunction();
 }
