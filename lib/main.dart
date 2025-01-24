@@ -13,7 +13,7 @@ class CleaningApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Clean clean clean',
+      title: 'moompda clean',
       theme: ThemeData(
         brightness: Brightness.light,
         primaryColor: Colors.pink.shade300,
