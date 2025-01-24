@@ -28,7 +28,7 @@ class CleaningApp extends StatelessWidget {
         //   bodyMedium: TextStyle(fontSize: 18.0, fontFamily: 'Varela'),
         // ),
       ),
-      home: const CleaningListPage(title: 'Time to Clean!'),
+      home: const CleaningListPage(title: 'Mere Moments per Day!'),
     );
   }
 }

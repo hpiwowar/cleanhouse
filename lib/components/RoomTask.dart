@@ -10,6 +10,7 @@ class RoomTask {
   int period_days = 1;
   late String full_name = "$room_name $task_name";
   late double score = calculateScore();
+  late bool isQuick = this.task_name.contains('quick');
   late bool isDeep = this.task_name.contains('deep');
   late String display_task_name = this.task_name.toTitleCase.replaceAll('Deep ','').replaceAll('Quick ', '');
   late String display_room_name = this.room_name.toTitleCase;

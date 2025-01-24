@@ -1,18 +1,16 @@
-import 'dart:convert';
-import 'dart:developer';
-
-import 'package:uuid/uuid.dart';
+import 'package:cleanhouse/components/RoomTask.dart';
+import 'package:cleanhouse/pages/CleaningDetailPage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 import 'package:searchable_listview/searchable_listview.dart';
-import 'package:cleanhouse/components/RoomTask.dart';
-import 'package:cleanhouse/pages/CleaningDetailPage.dart';
+import 'package:uuid/uuid.dart';
 
 List _myRoomData = [];
 
 class CleaningListPage extends StatefulWidget {
   const CleaningListPage({super.key, required this.title});
+
   final String title;
 
   @override
@@ -33,13 +31,12 @@ class _CleaningListPageState extends State<CleaningListPage> {
     String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
     late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
-    List newRoomData = await client.query(
-        "select room_tasks.*, "
-            " room_name, "
-            " task_name, "
-            " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-10 days')) as most_recent_cleaning, "
-            " string_agg(equipment_name, "
-            " ';')"
+    List newRoomData = await client.query("select room_tasks.*, "
+        " room_name, "
+        " task_name, "
+        " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-10 days')) as most_recent_cleaning, "
+        " string_agg(equipment_name, "
+        " ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
         " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
@@ -151,13 +148,18 @@ class EmptyView extends StatelessWidget {
   }
 }
 
-class RoomTaskItem extends StatelessWidget {
+class RoomTaskItem extends StatefulWidget {
   final RoomTask room_task;
   VoidCallback setStateFunction;
 
   RoomTaskItem(
       {super.key, required this.room_task, required this.setStateFunction});
 
+  @override
+  State<RoomTaskItem> createState() => _RoomTaskItemState();
+}
+
+class _RoomTaskItemState extends State<RoomTaskItem> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -167,7 +169,7 @@ class RoomTaskItem extends StatelessWidget {
         child: GestureDetector(
           onTap: () async {
             await _navigateAndDisplaySelection(
-                room_task, setStateFunction, context);
+                widget.room_task, widget.setStateFunction, context);
           },
           child: Card(
             child: Padding(
@@ -178,9 +180,11 @@ class RoomTaskItem extends StatelessWidget {
                   Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(room_task.isDeep
+                        Icon(widget.room_task.isDeep
                             ? Icons.workspace_premium_outlined
-                            : Icons.bolt),
+                            : widget.room_task.isQuick
+                                ? Icons.bolt
+                                : Icons.check),
                         const SizedBox(width: 50),
                       ]),
                   Column(
@@ -188,14 +192,14 @@ class RoomTaskItem extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            room_task.display_task_name,
+                            widget.room_task.display_task_name,
                             style: const TextStyle(
                                 color: Colors.black, fontSize: 20),
                           ),
                         ),
                         Expanded(
                           child: Text(
-                            room_task.display_room_name,
+                            widget.room_task.display_room_name,
                             style: const TextStyle(
                                 color: Colors.black, fontSize: 15),
                           ),
@@ -206,7 +210,7 @@ class RoomTaskItem extends StatelessWidget {
                       children: [
                         const SizedBox(width: 80),
                         Text(
-                          '${room_task.calculateScore().toStringAsFixed(1)}',
+                          '${widget.room_task.calculateScore().toStringAsFixed(1)}',
                           style: const TextStyle(
                             color: Colors.deepOrangeAccent,
                           ),
