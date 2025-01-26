@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
 import 'package:cleanhouse/components/RoomTask.dart';
+import 'package:confetti/confetti.dart';
+import 'package:flutter/material.dart';
+import 'package:keep_screen_on/keep_screen_on.dart';
 
 class CleaningDetailPage extends StatefulWidget {
   // In the constructor, require a roomRask.
@@ -16,8 +17,13 @@ class CleaningDetailPage extends StatefulWidget {
 }
 
 extension StringCasingExtension on String {
-  String get toCapitalized => length > 0 ?'${this[0].toUpperCase()}${substring(1).toLowerCase()}':'';
-  String get toTitleCase => replaceAll(RegExp(' +'), ' ').split(' ').map((str) => str.toCapitalized).join(' ');
+  String get toCapitalized =>
+      length > 0 ? '${this[0].toUpperCase()}${substring(1).toLowerCase()}' : '';
+
+  String get toTitleCase => replaceAll(RegExp(' +'), ' ')
+      .split(' ')
+      .map((str) => str.toCapitalized)
+      .join(' ');
 }
 
 class _CleaningDetailPageState extends State<CleaningDetailPage> {
@@ -42,8 +48,7 @@ class _CleaningDetailPageState extends State<CleaningDetailPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Is this a real task?",
-          style: TextStyle(fontSize: 15)),
+              Text("Is this a real task?", style: TextStyle(fontSize: 15)),
               Checkbox(
                   value: isRealTask,
                   onChanged: (bool? value) {
@@ -66,6 +71,7 @@ class _CleaningDetailPageState extends State<CleaningDetailPage> {
 
 class MyStopwatch extends StatefulWidget {
   late bool? _is_real_task_set;
+  bool _is_buttons_visible = true;
 
   MyStopwatch(bool? is_real_task_set) {
     this._is_real_task_set = is_real_task_set;
@@ -88,7 +94,7 @@ class _MyStopwatchState extends State<MyStopwatch> {
 
 // initialize confettiController
     _confettiController =
-        ConfettiController(duration: const Duration(seconds: 4));
+        ConfettiController(duration: const Duration(seconds: 1));
 
     _elapsedTime = Duration.zero;
     _elapsedTimeString = _formatElapsedTime(_elapsedTime);
@@ -105,16 +111,19 @@ class _MyStopwatchState extends State<MyStopwatch> {
   }
 
   // Start/Stop button callback
-  Future<void> _startStopwatch() async {
+  Future<void> _startOrStopStopwatch() async {
     if (!_stopwatch.isRunning) {
       // Start the stopwatch and update elapsed time
       _stopwatch.start();
+      KeepScreenOn.turnOn();
       _updateElapsedTime();
     } else {
       // Stop the stopwatch
       _stopwatch.stop();
+      KeepScreenOn.turnOff();
+      widget._is_buttons_visible = false;
       _confettiController.play();
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 3));
       final Map response = {
         'duration_ms': _elapsedTime.inMilliseconds,
         'is_real': widget._is_real_task_set
@@ -169,42 +178,54 @@ class _MyStopwatchState extends State<MyStopwatch> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: 3.14 / 2,
-              maxBlastForce: 5,
-              minBlastForce: 1,
-              emissionFrequency: 0.03,
-              numberOfParticles: 10, // 10 paticles will pop-up at a time
-              gravity: 0, // particles will pop-up
-            ),
+            Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  maxBlastForce: 40,
+                  minBlastForce: 5,
+                  emissionFrequency: 0.1,
+                  numberOfParticles: 20,
+                  gravity: 0, // particles will pop-up
+                )),
+
             // Display elapsed time
-            Text(
-              _elapsedTimeString,
-              style: const TextStyle(fontSize: 40.0),
-            ),
+            Visibility(
+                visible: widget._is_buttons_visible,
+                child: Text(
+                  _elapsedTimeString,
+                  style: const TextStyle(fontSize: 40.0),
+                )),
+
             const SizedBox(height: 30.0),
+
             // Start/Stop and Reset buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                ElevatedButton(
-                  onPressed: _startStopwatch,
-                  style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all<Color>(
-                          _stopwatch.isRunning ? Colors.blue : Colors.green)),
-                  child: _stopwatch.isRunning
-                      ? Icon(Icons.stop, size: 40, color: Colors.black)
-                      : Icon(Icons.play_arrow, size: 40, color: Colors.black),
-                ),
-                const SizedBox(width: 20.0),
-                ElevatedButton(
-                  onPressed: _pauseStopwatch,
-                  style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all<Color>((Colors.grey))),
-                  child: const Icon(Icons.pause, size: 40, color: Colors.black),
-                ),
-              ],
+            Visibility(
+              visible: widget._is_buttons_visible,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  ElevatedButton(
+                    onPressed: _startOrStopStopwatch,
+                    style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all<Color>(
+                            _stopwatch.isRunning ? Colors.blue : Colors.green)),
+                    child: _stopwatch.isRunning
+                        ? Icon(Icons.stop, size: 40, color: Colors.black)
+                        : Icon(Icons.play_arrow, size: 40, color: Colors.black),
+                  ),
+                  const SizedBox(width: 20.0),
+                  ElevatedButton(
+                    onPressed: _pauseStopwatch,
+                    style: ButtonStyle(
+                        backgroundColor:
+                            MaterialStateProperty.all<Color>((Colors.grey))),
+                    child:
+                        const Icon(Icons.pause, size: 40, color: Colors.black),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

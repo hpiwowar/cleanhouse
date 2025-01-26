@@ -43,6 +43,7 @@ dependencies:
   searchable_listview: ^2.16.0
   flutter_native_splash: ^2.4.3
   confetti: ^0.8.0
+  keep_screen_on: ^3.0.0
 
 dev_dependencies:
   flutter_test:
