@@ -39,7 +39,11 @@ class _CleaningListPageState extends State<CleaningListPage> {
         " ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
-        " where room_tasks.room_id=rooms.id and room_tasks.task_id=tasks.id and task_equipment.task_id=tasks.id and task_equipment.equipment_id=equipment.id"
+        " where room_tasks.room_id=rooms.id "
+          " and room_tasks.task_id=tasks.id "
+          " and task_equipment.task_id=tasks.id "
+          " and task_equipment.equipment_id=equipment.id"
+          " and cleanings.is_real=1"
         " group by room_tasks.id"
         " order by room_name, task_name;");
     // log("Here is the data we got from the database:");
