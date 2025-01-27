@@ -28,6 +28,8 @@ extension StringCasingExtension on String {
 
 class _CleaningDetailPageState extends State<CleaningDetailPage> {
   bool? isRealTask = false;
+  bool? isClean = false;
+  bool? isNeedToClean = false;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +60,38 @@ class _CleaningDetailPageState extends State<CleaningDetailPage> {
                   }),
             ],
           ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Mark as clean?", style: TextStyle(fontSize: 15)),
+              Checkbox(
+                  value: isClean,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      isClean = value;
+                    });
+                    Navigator.pop(context, {
+                      'is_clean': true
+                    });
+                  }),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Mark as need to clean?", style: TextStyle(fontSize: 15)),
+              Checkbox(
+                  value: isNeedToClean,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      isNeedToClean = value;
+                    });
+                    Navigator.pop(context, {
+                      'is_needs_clean': true
+                    });
+                  }),
+            ],
+          ),
           SizedBox(
             width: 200.0,
             height: 200.0,
@@ -70,11 +104,11 @@ class _CleaningDetailPageState extends State<CleaningDetailPage> {
 }
 
 class MyStopwatch extends StatefulWidget {
-  late bool? _is_real_task_set;
+  late bool? _isRealTaskSet;
   bool _is_buttons_visible = true;
 
-  MyStopwatch(bool? is_real_task_set) {
-    this._is_real_task_set = is_real_task_set;
+  MyStopwatch(bool? isRealTaskSet) {
+    this._isRealTaskSet = isRealTaskSet;
   }
 
   @override
@@ -126,11 +160,12 @@ class _MyStopwatchState extends State<MyStopwatch> {
       await Future.delayed(const Duration(seconds: 3));
       final Map response = {
         'duration_ms': _elapsedTime.inMilliseconds,
-        'is_real': widget._is_real_task_set
+        'is_real': widget._isRealTaskSet
       };
       Navigator.pop(context, response);
     }
   }
+
 
   // // Reset button callback
   // void _resetStopwatch() {

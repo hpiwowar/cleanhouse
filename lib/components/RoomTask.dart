@@ -40,11 +40,12 @@ class RoomTask {
     final daysSinceLastCleaning =
         now.difference(mostRecentCleaningDatetime).inDays;
 
-    final daysTillNextDue = period_days - daysSinceLastCleaning;
+    final daysTillNextDue = daysSinceLastCleaning - period_days;
     double percentOverdue = 0.0;
-    if (daysTillNextDue < 0) {
-      percentOverdue = daysTillNextDue / period_days;
-    }
+    // if (daysTillNextDue > 0) {
+    //   percentOverdue = daysTillNextDue / period_days;
+    // }
+    percentOverdue = daysTillNextDue / period_days;
     return (percentOverdue);
   }
 }

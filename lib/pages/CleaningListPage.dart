@@ -34,16 +34,16 @@ class _CleaningListPageState extends State<CleaningListPage> {
     List newRoomData = await client.query("select room_tasks.*, "
         " room_name, "
         " task_name, "
-        " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-10 days')) as most_recent_cleaning, "
+        " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-21 days')) as most_recent_cleaning, "
         " string_agg(equipment_name, "
         " ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
         " where room_tasks.room_id=rooms.id "
-          " and room_tasks.task_id=tasks.id "
-          " and task_equipment.task_id=tasks.id "
-          " and task_equipment.equipment_id=equipment.id"
-          " and cleanings.is_real=1"
+        " and room_tasks.task_id=tasks.id "
+        " and task_equipment.task_id=tasks.id "
+        " and task_equipment.equipment_id=equipment.id"
+        " and (cleanings.is_real=1 or cleanings.is_real is null)"
         " group by room_tasks.id"
         " order by room_name, task_name;");
     // log("Here is the data we got from the database:");
@@ -88,7 +88,7 @@ Widget simpleSearchWithSort(
     for (Map RoomMap in roomListofMapsData) RoomTask.fromMap(RoomMap)
   ];
   roomDataAsRooms.sort((a, b) {
-    final scoreCompare = a.score.compareTo(b.score);
+    final scoreCompare = b.score.compareTo(a.score);
 
     // if a tie on score
     if (scoreCompare == 0) {
@@ -102,7 +102,7 @@ Widget simpleSearchWithSort(
       // else return compare the number of remaining equipments in a and b lists
 
       // backup, sort on task name
-      return 1 * a.task_name.compareTo(b.task_name);
+      return 1 * b.task_name.compareTo(a.task_name);
     }
     return scoreCompare;
   });
@@ -184,11 +184,15 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                   Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(widget.room_task.isDeep
-                            ? Icons.workspace_premium_outlined
-                            : widget.room_task.isQuick
-                                ? Icons.bolt
-                                : Icons.check),
+                        Icon(
+                            widget.room_task.isDeep
+                                ? Icons.workspace_premium_outlined
+                                : widget.room_task.isQuick
+                                    ? Icons.bolt
+                                    : Icons.check,
+                            color: (widget.room_task.calculateScore()) >= 0
+                                ? Colors.black
+                                : Colors.grey),
                         const SizedBox(width: 50),
                       ]),
                   Column(
@@ -197,15 +201,21 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                         Expanded(
                           child: Text(
                             widget.room_task.display_task_name,
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 20),
+                            style: TextStyle(
+                                fontSize: 20,
+                                color: (widget.room_task.calculateScore()) >= 0
+                                    ? Colors.black
+                                    : Colors.grey),
                           ),
                         ),
                         Expanded(
                           child: Text(
                             widget.room_task.display_room_name,
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 15),
+                            style: TextStyle(
+                                fontSize: 15,
+                                color: (widget.room_task.calculateScore()) >= 0
+                                    ? Colors.black
+                                    : Colors.grey),
                           ),
                         ),
                       ]),
@@ -214,7 +224,7 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                       children: [
                         const SizedBox(width: 80),
                         Text(
-                          '${widget.room_task.calculateScore().toStringAsFixed(1)}',
+                          '${widget.room_task.calculateScore().toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.deepOrangeAccent,
                           ),
@@ -242,8 +252,10 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
         builder: (context) => CleaningDetailPage(room_task: roomTask),
       ));
   if (result != null) {
-    final bool is_real = result['is_real'];
-    final int duration_ms = result['duration_ms'];
+    final bool? is_real = result['is_real'];
+    final bool? is_clean = result['is_clean'];
+    final bool? is_needs_clean = result['is_needs_clean'];
+    final int? duration_ms = result['duration_ms'];
 
     // When a BuildContext is used from a StatefulWidget, the mounted property
     // must be checked after an asynchronous gap.
@@ -258,17 +270,42 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
       String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
       late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
       await client.connect();
-      await client.execute(
-          "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
-          " VALUES (?,?,?,?,?)",
-          positional: [
-            cleaningId,
-            roomTask.id,
-            DateTime.now().toString(),
-            duration_ms,
-            is_real ? 1 : 0
-          ]);
+
+      if (is_needs_clean == true)
+        await client.execute(
+            "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+                " VALUES (?,?,?,?,?)",
+            positional: [
+              cleaningId,
+              roomTask.id,
+              DateTime.now().subtract(Duration(days: roomTask.period_days)).toString(), // say it needs to be cleaned again now
+              -1,
+              1
+            ]);
+      else if (is_clean == true)
+        await client.execute(
+            "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+                " VALUES (?,?,?,?,?)",
+            positional: [
+              cleaningId,
+              roomTask.id,
+              DateTime.now().subtract(Duration(days: roomTask.period_days ~/2)).toString(), // say it was cleaned half the duration ago
+              -2,
+              1
+            ]);
+      else
+          await client.execute(
+              "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+                  " VALUES (?,?,?,?,?)",
+              positional: [
+                cleaningId,
+                roomTask.id,
+                DateTime.now().toString(),
+                duration_ms,
+                is_real == true ? 1 : 0
+              ]);
     }
+
 
     setStateFunction();
   }
