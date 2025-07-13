@@ -8,7 +8,9 @@ class RoomTask {
   String task_name = 'Temp Task';
   String most_recent_cleaning = DateTime.now().toString();
   int period_days = 1;
+  double avg_duration_mins = 0.0;
   late String full_name = "$room_name $task_name";
+  double accumulated_duration_mins = 0.0;
   late double score = calculateScore();
   late bool isQuick = this.task_name.contains('quick');
   late bool isDeep = this.task_name.contains('deep');
@@ -22,15 +24,18 @@ class RoomTask {
       required this.room_name,
       required this.task_name,
       required this.most_recent_cleaning,
+        required this.avg_duration_mins,
       required period_days});
 
   RoomTask.fromMap(Map myMap) {
+    print(myMap);
     id = myMap["id"];
     room_id = myMap["room_name"];
     task_id = myMap["task_id"];
     room_name = myMap["room_name"];
     task_name = myMap["task_name"];
     most_recent_cleaning = myMap["most_recent_cleaning"];
+    avg_duration_mins = myMap["avg_duration_mins"] != null ? myMap["avg_duration_mins"] : 0;
     period_days = myMap["period_days"];
   }
 
@@ -48,4 +53,10 @@ class RoomTask {
     percentOverdue = daysTillNextDue / period_days;
     return (percentOverdue);
   }
+
+  bool doToday() {
+    double max_duration_today_mins = 5.0;
+    return accumulated_duration_mins <= max_duration_today_mins;
+  }
+
 }

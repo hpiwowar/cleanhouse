@@ -31,7 +31,13 @@ class _CleaningListPageState extends State<CleaningListPage> {
     String dbToken = dotenv.env['TURSO_AUTH_TOKEN'] ?? '';
     late LibsqlClient client = LibsqlClient(dbUrl, authToken: dbToken);
     await client.connect();
-    List newRoomData = await client.query("select room_tasks.*, "
+    List newRoomData = await client.query(
+        "with cleanings_duration (room_tasks_id, duration_ms, is_real) as "
+        "   (select room_tasks_id, duration_ms, is_real from cleanings "
+        "     where duration_ms > 0 "
+        "     and ((is_real=1) or (is_real is null))) "
+        "select room_tasks.*, "
+        " avg(COALESCE(cleanings_duration.duration_ms, cleanings_duration.duration_ms))/1000/60 as avg_duration_mins, "
         " room_name, "
         " task_name, "
         " COALESCE(max(end_datetime), DateTime('now', 'localtime', '-21 days')) as most_recent_cleaning, "
@@ -39,6 +45,7 @@ class _CleaningListPageState extends State<CleaningListPage> {
         " ';')"
         " from room_tasks, rooms, tasks, task_equipment, equipment"
         " left join cleanings on room_tasks.id = cleanings.room_tasks_id"
+        " left join cleanings_duration on room_tasks.id = cleanings_duration.room_tasks_id"
         " where room_tasks.room_id=rooms.id "
         " and room_tasks.task_id=tasks.id "
         " and task_equipment.task_id=tasks.id "
@@ -87,6 +94,7 @@ Widget simpleSearchWithSort(
   List<RoomTask> roomDataAsRooms = [
     for (Map RoomMap in roomListofMapsData) RoomTask.fromMap(RoomMap)
   ];
+
   roomDataAsRooms.sort((a, b) {
     final scoreCompare = b.score.compareTo(a.score);
 
@@ -106,6 +114,14 @@ Widget simpleSearchWithSort(
     }
     return scoreCompare;
   });
+
+  double accumulated_duration_mins = 0.0;
+  for (RoomTask room in roomDataAsRooms) {
+    if (room.avg_duration_mins > 0) {
+      accumulated_duration_mins += room.avg_duration_mins;
+    }
+    room.accumulated_duration_mins = accumulated_duration_mins;
+  }
 
   return SearchableList<RoomTask>(
     lazyLoadingEnabled: false,
@@ -191,8 +207,8 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                                     ? Icons.bolt
                                     : Icons.check,
                             color: (widget.room_task.calculateScore()) >= 0
-                                ? Colors.black
-                                : Colors.grey),
+                                ? widget.room_task.doToday() ? Colors.black: Colors.black38
+                                : Colors.black12),
                         const SizedBox(width: 50),
                       ]),
                   Column(
@@ -204,8 +220,8 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                             style: TextStyle(
                                 fontSize: 20,
                                 color: (widget.room_task.calculateScore()) >= 0
-                                    ? Colors.black
-                                    : Colors.grey),
+                                    ? widget.room_task.doToday() ? Colors.black: Colors.black38
+                                    : Colors.black12),
                           ),
                         ),
                         Expanded(
@@ -214,8 +230,8 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                             style: TextStyle(
                                 fontSize: 15,
                                 color: (widget.room_task.calculateScore()) >= 0
-                                    ? Colors.black
-                                    : Colors.grey),
+                                    ? widget.room_task.doToday() ? Colors.black: Colors.black38
+                                    : Colors.black12),
                           ),
                         ),
                       ]),
@@ -227,6 +243,13 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                           '${widget.room_task.calculateScore().toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.deepOrangeAccent,
+                          ),
+                        ),
+                        const SizedBox(width: 80),
+                        Text(
+                          '${widget.room_task.accumulated_duration_mins.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.deepPurpleAccent,
                           ),
                         )
                       ])
@@ -274,38 +297,41 @@ Future<void> _navigateAndDisplaySelection(RoomTask roomTask,
       if (is_needs_clean == true)
         await client.execute(
             "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
-                " VALUES (?,?,?,?,?)",
+            " VALUES (?,?,?,?,?)",
             positional: [
               cleaningId,
               roomTask.id,
-              DateTime.now().subtract(Duration(days: roomTask.period_days)).toString(), // say it needs to be cleaned again now
+              DateTime.now()
+                  .subtract(Duration(days: roomTask.period_days))
+                  .toString(), // say it needs to be cleaned again now
               -1,
               1
             ]);
       else if (is_clean == true)
         await client.execute(
             "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
-                " VALUES (?,?,?,?,?)",
+            " VALUES (?,?,?,?,?)",
             positional: [
               cleaningId,
               roomTask.id,
-              DateTime.now().subtract(Duration(days: roomTask.period_days ~/2)).toString(), // say it was cleaned half the duration ago
+              DateTime.now()
+                  .subtract(Duration(days: roomTask.period_days ~/ 2))
+                  .toString(), // say it was cleaned half the duration ago
               -2,
               1
             ]);
       else
-          await client.execute(
-              "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
-                  " VALUES (?,?,?,?,?)",
-              positional: [
-                cleaningId,
-                roomTask.id,
-                DateTime.now().toString(),
-                duration_ms,
-                is_real == true ? 1 : 0
-              ]);
+        await client.execute(
+            "INSERT INTO cleanings (id, room_tasks_id, end_datetime, duration_ms, is_real)"
+            " VALUES (?,?,?,?,?)",
+            positional: [
+              cleaningId,
+              roomTask.id,
+              DateTime.now().toString(),
+              duration_ms,
+              is_real == true ? 1 : 0
+            ]);
     }
-
 
     setStateFunction();
   }
