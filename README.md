@@ -14,3 +14,16 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+
+## For you Heather
+
+### IDE 
+IntelliJ IDEA
+
+### To build
+```flutter build apk --debug ```
+
+### To get onto phone
+Open LocalSend on laptop and phone and copy over ``app-debug.apk``
+
