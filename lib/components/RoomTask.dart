@@ -55,7 +55,7 @@ class RoomTask {
   }
 
   bool doToday() {
-    double max_duration_today_mins = 5.0;
+    double max_duration_today_mins = 10.0;
     return accumulated_duration_mins <= max_duration_today_mins;
   }
 

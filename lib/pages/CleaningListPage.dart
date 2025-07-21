@@ -116,6 +116,18 @@ Widget simpleSearchWithSort(
   });
 
   double accumulated_duration_mins = 0.0;
+  // first accumulate any time already done today
+  var now = new DateTime.now().toUtc();
+  var earlierToday = now.subtract(const Duration(hours: 12));
+
+  for (RoomTask room in roomDataAsRooms) {
+    var most_recent_cleaning = DateTime.parse(room.most_recent_cleaning);
+
+    if (most_recent_cleaning.isAfter(earlierToday)) {
+      accumulated_duration_mins += room.avg_duration_mins;
+    }
+  }
+  // then add on future things we could do
   for (RoomTask room in roomDataAsRooms) {
     if (room.avg_duration_mins > 0) {
       accumulated_duration_mins += room.avg_duration_mins;
@@ -242,14 +254,14 @@ class _RoomTaskItemState extends State<RoomTaskItem> {
                         Text(
                           '${widget.room_task.calculateScore().toStringAsFixed(2)}',
                           style: const TextStyle(
-                            color: Colors.deepOrangeAccent,
+                            color: Colors.orange,
                           ),
                         ),
                         const SizedBox(width: 80),
                         Text(
-                          '${widget.room_task.accumulated_duration_mins.toStringAsFixed(2)}',
+                          '${widget.room_task.accumulated_duration_mins.toStringAsFixed(1)} (${widget.room_task.avg_duration_mins.toStringAsFixed(1)} minutes)',
                           style: const TextStyle(
-                            color: Colors.deepPurpleAccent,
+                            color: Colors.pink,
                           ),
                         )
                       ])
